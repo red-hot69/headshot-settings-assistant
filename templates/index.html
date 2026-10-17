@@ -1,1 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101015">
+  <title>Headshot Settings Assistant</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0b0b10; --panel:#15151d; --line:#2b2b38; --text:#f4f4f8; --muted:#a7a7b8; --red:#ff3d4f; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, sans-serif; background: radial-gradient(circle at top right,#32121b 0,#0b0b10 42%); color:var(--text); }
+    .wrap { width:min(960px, 100%); margin:auto; padding:22px 15px 40px; }
+    header { padding:16px 0 22px; }
+    .eyebrow { color:#ff7580; text-transform:uppercase; letter-spacing:.16em; font-size:.75rem; font-weight:800; }
+    h1 { margin:8px 0; font-size:clamp(2rem,8vw,3.3rem); line-height:1.02; }
+    .sub { color:var(--muted); max-width:650px; line-height:1.6; }
+    .layout { display:grid; grid-template-columns:1fr; gap:15px; }
+    .card { background:rgba(21,21,29,.94); border:1px solid var(--line); border-radius:18px; padding:18px; box-shadow:0 10px 30px #0002; }
+    h2 { font-size:1.05rem; margin:0 0 14px; }
+    label { display:block; color:var(--muted); font-size:.9rem; margin:13px 0 7px; }
+    select, button { width:100%; border-radius:12px; padding:13px; font:inherit; }
+    select { background:#0d0d13; color:var(--text); border:1px solid #3a3a49; }
+    button { border:0; color:white; background:linear-gradient(110deg,#ff3d4f,#b91837); font-weight:800; margin-top:17px; cursor:pointer; }
+    button:active { transform:scale(.99); }
+    .stats { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .stat { background:#0d0d13; border:1px solid #292936; border-radius:12px; padding:12px; }
+    .stat span { display:block; color:var(--muted); font-size:.78rem; }
+    .stat strong { display:block; font-size:1.5rem; margin-top:4px; }
+    .tip { background:#24131a; border:1px solid #5a2632; border-radius:12px; padding:13px; line-height:1.5; margin-top:13px; }
+    .pill { display:inline-block; border:1px solid #454554; color:#dddde8; padding:5px 9px; border-radius:99px; font-size:.75rem; margin:0 5px 8px 0; }
+    .note { color:var(--muted); font-size:.82rem; line-height:1.55; margin-top:14px; }
+    .copy { background:#242431; border:1px solid #424252; margin-top:10px; }
+    footer { color:#858597; font-size:.78rem; padding:20px 2px 0; line-height:1.6; }
+    @media(min-width:720px) { .layout { grid-template-columns: .9fr 1.1fr; } .card { padding:22px; } .stats { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <div class="eyebrow">Player-made settings companion</div>
+      <h1>HEADSHOT<br>ASSISTANT<span style="color:var(--red)">.</span></h1>
+      <p class="sub">Build a personal sensitivity starting point, tune your fire button, and practice consistently. Made for mobile screens.</p>
+      <span class="pill">Python + Flask</span><span class="pill">Mobile-friendly</span><span class="pill">No game modification</span>
+    </header>
+
+    <div class="layout">
+      <section class="card">
+        <h2>Configure your starting point</h2>
+        <label for="style">Play style</label>
+        <select id="style">
+          <option value="steady">Steady control</option>
+          <option value="balanced" selected>Balanced</option>
+          <option value="fast">Fast swipe</option>
+        </select>
+        <label for="device">Device</label>
+        <select id="device">
+          <option value="phone" selected>Phone</option>
+          <option value="tablet">Tablet</option>
+        </select>
+        <label for="experience">Experience level</label>
+        <select id="experience">
+          <option value="new" selected>New / still learning</option>
+          <option value="regular">Regular player</option>
+        </select>
+        <button id="generate">Generate my settings</button>
+        <p class="note">These values are editable suggestions, not official game settings. Enter them manually in the game if the relevant options are available.</p>
+      </section>
+
+      <section class="card" aria-live="polite">
+        <h2 id="presetTitle">Balanced starting point</h2>
+        <div id="results" class="stats">
+          <div class="stat"><span>General</span><strong>92</strong></div>
+          <div class="stat"><span>Red Dot</span><strong>88</strong></div>
+          <div class="stat"><span>2x Scope</span><strong>85</strong></div>
+          <div class="stat"><span>4x Scope</span><strong>78</strong></div>
+          <div class="stat"><span>Sniper Scope</span><strong>52</strong></div>
+          <div class="stat"><span>Free Look</span><strong>80</strong></div>
+          <div class="stat"><span>Fire button size</span><strong>50</strong></div>
+        </div>
+        <div id="tip" class="tip">Tip: test in Training Ground and change one setting at a time.</div>
+        <button id="copy" class="copy">Copy settings summary</button>
+        <p id="status" class="note" role="status"></p>
+      </section>
+    </div>
+    <footer>
+      Fan-made companion, not affiliated with or endorsed by Garena. No auto-aim, memory editing, account access, or gameplay automation. No sensitivity setting can guarantee headshots.
+    </footer>
+  </main>
+<script>
+const $ = (id) => document.getElementById(id);
+let currentSummary = "";
+async function generate() {
+  $("generate").disabled = true;
+  $("generate").textContent = "Creating...";
+  try {
+    const response = await fetch("/api/recommend", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        style: $("style").value,
+        device: $("device").value,
+        experience: $("experience").value
+      })
+    });
+    if (!response.ok) throw new Error("Request failed");
+    const d = await response.json();
+    $("presetTitle").textContent = d.name + " starting point";
+    const entries = [
+      ["General", d.general], ["Red Dot", d.red_dot], ["2x Scope", d["2x_scope"]],
+      ["4x Scope", d["4x_scope"]], ["Sniper Scope", d.sniper_scope],
+      ["Free Look", d.free_look], ["Fire button size", d.fire_button]
+    ];
+    $("results").innerHTML = entries.map(([name,value]) =>
+      `<div class="stat"><span>${name}</span><strong>${value}</strong></div>`
+    ).join("");
+    $("tip").textContent = d.tip;
+    currentSummary = d.name + "\n" + entries.map(([n,v]) => `${n}: ${v}`).join("\n") + "\nTip: " + d.tip;
+    $("status").textContent = "";
+  } catch (e) {
+    $("status").textContent = "Could not reach the Python backend. Check that the app is running and try again.";
+  } finally {
+    $("generate").disabled = false;
+    $("generate").textContent = "Generate my settings";
+  }
+}
+$("generate").addEventListener("click", generate);
+$("copy").addEventListener("click", async () => {
+  if (!currentSummary) currentSummary = "Balanced settings: General 92, Red Dot 88, 2x 85, 4x 78, Sniper 52, Free Look 80, Fire button 50.";
+  try {
+    await navigator.clipboard.writeText(currentSummary);
+    $("status").textContent = "Settings summary copied.";
+  } catch {
+    $("status").textContent = currentSummary;
+  }
+});
+generate();
+</script>
+</body>
+  </html>
 
